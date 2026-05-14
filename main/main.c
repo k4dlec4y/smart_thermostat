@@ -2,6 +2,7 @@
 #include "esp_log.h"
 #include "display.h"
 #include "thermostat.h"
+#include "buttons.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -36,10 +37,21 @@ void app_main(void)
 	i2c_init();
     thermostat_init(i2c_bus_handle, default_actual_temp, default_target_temp);
     display_init(i2c_bus_handle, default_actual_temp, default_target_temp);
+    buttons_init();
 
     while (1) {
         display_set_actual_temp(get_actual_temp());
         display_set_target_temp(get_target_temp());
+
+        if (atomic_load(&button_down_pressed)) {
+            atomic_store(&button_down_pressed, false);
+            decrease_target_temp();
+        }
+        if (atomic_load(&button_up_pressed)) {
+            atomic_store(&button_up_pressed, false);
+            increase_target_temp();
+        }
+
         vTaskDelay(pdMS_TO_TICKS(30));
     }
 }
