@@ -76,10 +76,10 @@ void i2c_bmp280_task(void *params)
         if (result != ESP_OK) {
             ESP_LOGE(TAG, "bmp280 device read failed (%s)", esp_err_to_name(result));
         } else {
-			ESP_LOGI(TAG, "sensor value read");
+			ESP_LOGI(TAG, "sensor value read: %.2f C", temp);
 		}
         set_actual_temp(temp);
-		vTaskDelay(pdMS_TO_TICKS(30));
+		vTaskDelay(pdMS_TO_TICKS(40));
     }
     bmp280_delete(g_bmp_handle);
     vTaskDelete(NULL);

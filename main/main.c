@@ -60,6 +60,6 @@ void app_main(void)
         int heater_output = (int)pid_update(&pid, set_temp, act_temp);
         ESP_LOGI(TAG, "HEATER OUTPUT: %d", heater_output);
         heater_pwm_set(heater_output);
-        vTaskDelay(pdMS_TO_TICKS(200));
+        vTaskDelay(pdMS_TO_TICKS(40));
     }
 }
