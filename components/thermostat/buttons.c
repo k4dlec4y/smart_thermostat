@@ -17,24 +17,14 @@ static esp_timer_handle_t button_up_debounce_timer;
 
 void IRAM_ATTR button_up_handler(void* data)
 {
-	if (gpio_get_level(BUTTON_UP_PIN) == 0) {
-		gpio_intr_disable(BUTTON_UP_PIN);
-		esp_timer_start_once(button_up_debounce_timer, DEBOUNCE_TIME_US);
-	} else {
-		gpio_intr_disable(BUTTON_UP_PIN);
-		esp_timer_stop(button_up_debounce_timer);
-	}
+	gpio_intr_disable(BUTTON_UP_PIN);
+	esp_timer_start_once(button_up_debounce_timer, DEBOUNCE_TIME_US);
 }
 
 void IRAM_ATTR button_down_handler(void* data)
 {
-	if (gpio_get_level(BUTTON_DOWN_PIN) == 0) {
-		gpio_intr_disable(BUTTON_DOWN_PIN);
-		esp_timer_start_once(button_down_debounce_timer, DEBOUNCE_TIME_US);
-	} else {
-		gpio_intr_enable(BUTTON_DOWN_PIN);
-		esp_timer_stop(button_down_debounce_timer);
-	}
+	gpio_intr_disable(BUTTON_DOWN_PIN);
+	esp_timer_start_once(button_down_debounce_timer, DEBOUNCE_TIME_US);
 }
 
 void IRAM_ATTR button_debounce_handler(void* data)
@@ -64,7 +54,7 @@ void buttons_init(void)
 		.mode = GPIO_MODE_INPUT,
 		.pull_up_en = GPIO_PULLUP_ENABLE,
 		.pull_down_en = GPIO_PULLDOWN_DISABLE,
-		.intr_type = GPIO_INTR_ANYEDGE,
+		.intr_type = GPIO_INTR_NEGEDGE,
 	};
 	ESP_ERROR_CHECK(gpio_config(&button_cfg));
 	ESP_ERROR_CHECK(gpio_isr_handler_add(
