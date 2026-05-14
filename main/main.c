@@ -1,13 +1,14 @@
 #include "driver/i2c_master.h"
 #include "esp_log.h"
 #include "display.h"
+#include "thermostat.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 static const char *TAG = "main";
 
-#define I2C_SDA 8
-#define I2C_SCL 9
+#define I2C_SDA 17
+#define I2C_SCL 18
 
 static i2c_master_bus_handle_t i2c_bus_handle = NULL;
 
@@ -29,15 +30,16 @@ void i2c_init(void)
 
 void app_main(void)
 {
+    float default_actual_temp = 15;
+    float default_target_temp = 25;
+
 	i2c_init();
-    display_init(i2c_bus_handle, 15, 25);
-    int actual = 15;
-    int add = -1;
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    while (1)
-    {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        display_set_actual_temp(actual + add);
-        add *= -1;
+    thermostat_init(i2c_bus_handle, default_actual_temp, default_target_temp);
+    display_init(i2c_bus_handle, default_actual_temp, default_target_temp);
+
+    while (1) {
+        display_set_actual_temp(get_actual_temp());
+        display_set_target_temp(get_target_temp());
+        vTaskDelay(pdMS_TO_TICKS(30));
     }
 }

@@ -17,6 +17,30 @@ dependencies:
     source:
       type: idf
     version: 6.0.1
+  k0i05/esp_bmp280:
+    component_hash: 8dd4be3510d908209f42498683c3ba6719e25ffeebdd4710b33ad94055e63a0a
+    dependencies:
+    - name: idf
+      require: private
+      version: '>5.3.0'
+    - name: k0i05/esp_type_utils
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.2.7
+  k0i05/esp_type_utils:
+    component_hash: 95d8ec40268e045f7e264d8035f451e53844b4a2f6d5f112ece6645c5effd639
+    dependencies:
+    - name: idf
+      require: private
+      version: '>5.3.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.2.7
   lvgl/lvgl:
     component_hash: 17e68bfd21f0edf4c3ee838e2273da840bf3930e5dbc3bfa6c1190c3aed41f9f
     dependencies: []
@@ -27,6 +51,7 @@ dependencies:
 direct_dependencies:
 - espressif/esp_lvgl_port
 - idf
-manifest_hash: 448a08eb57a4fd444a70dfe0e9eefe6e990c564f44f7ea4c4667189fce27482a
+- k0i05/esp_bmp280
+manifest_hash: e12511813cabce6df27cf17253f5c444bfee99c98c69130c0f927e22fdef103d
 target: esp32s3
 version: 3.0.0
