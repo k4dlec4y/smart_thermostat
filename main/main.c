@@ -38,10 +38,15 @@ void app_main(void)
     thermostat_init(i2c_bus_handle, default_actual_temp, default_target_temp);
     display_init(i2c_bus_handle, default_actual_temp, default_target_temp);
     buttons_init();
+    heater_pwm_init();
+
+    PID pid = { .Kp = 2.0f, .Ki = 0.5f, .Kd = 1.0f };
 
     while (1) {
-        display_set_actual_temp(get_actual_temp());
-        display_set_target_temp(get_target_temp());
+        float act_temp = get_actual_temp();
+        display_set_actual_temp(act_temp);
+        float set_temp = get_target_temp();
+        display_set_target_temp(set_temp);
 
         if (atomic_load(&button_down_pressed)) {
             atomic_store(&button_down_pressed, false);
@@ -52,6 +57,9 @@ void app_main(void)
             increase_target_temp();
         }
 
-        vTaskDelay(pdMS_TO_TICKS(30));
+        int heater_output = (int)pid_update(&pid, set_temp, act_temp);
+        ESP_LOGI(TAG, "HEATER OUTPUT: %d", heater_output);
+        heater_pwm_set(heater_output);
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
 }

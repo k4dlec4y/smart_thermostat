@@ -3,8 +3,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "driver/ledc.h"
 
-static const char* TAG = "thermostat"; 
+static const char* TAG = "thermostat";
 
 typedef struct
 {
@@ -16,6 +17,56 @@ typedef struct
 
 static thermostat_t g_thermostat;
 static bmp280_handle_t g_bmp_handle;
+
+float pid_update(PID *pid, float set_temp, float act_temp)
+{
+    float dt = 1;
+    float error = set_temp - act_temp;
+    float P = pid->Kp * error;
+    pid->integral += error * dt;
+    if (pid->integral > 100) pid->integral = 100;
+    if (pid->integral < -100) pid->integral = -100;
+    float I = pid->Ki * pid->integral;
+    float derivative = (error - pid->prev_error) / dt;
+    float D = pid->Kd * derivative;
+    pid->prev_error = error;
+    float output = P + I + D;
+    if (output > 100)
+        output = 100;
+    if (output < 0)
+        output = 0;
+    return output;
+}
+
+void heater_pwm_init(void)
+{
+	ledc_timer_config_t timer = {
+		.speed_mode = LEDC_LOW_SPEED_MODE,
+		.timer_num = LEDC_TIMER_0,
+		.duty_resolution = LEDC_TIMER_10_BIT,
+		.freq_hz = 5000,
+		.clk_cfg = LEDC_AUTO_CLK
+	};
+
+	ESP_ERROR_CHECK(ledc_timer_config(&timer));
+
+	ledc_channel_config_t channel = {
+		.gpio_num = HEATER_PWM_PIN,
+		.speed_mode = LEDC_LOW_SPEED_MODE,
+		.channel = LEDC_CHANNEL_0,
+		.timer_sel = LEDC_TIMER_0,
+		.duty = 0,
+		.hpoint = 0
+	};
+
+	ESP_ERROR_CHECK(ledc_channel_config(&channel));
+}
+
+void heater_pwm_set(int duty_percentage)
+{
+	ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty_percentage * 1023 / 100);
+	ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+}
 
 void i2c_bmp280_task(void *params)
 {
