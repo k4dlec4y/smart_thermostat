@@ -137,7 +137,7 @@ void display_set_actual_temp(float temp)
 {
 	char buffer[64];
 	snprintf(buffer, sizeof(buffer), "Actual: %.2f C", temp);
-	ESP_LOGI(TAG, "Setting actual temp to: %.2f", temp);
+	// ESP_LOGI(TAG, "Setting actual temp to: %.2f", temp);
 
 	lvgl_port_lock(0);
 	lv_label_set_text(actual_temp_label, buffer);
@@ -148,7 +148,7 @@ void display_set_target_temp(float temp)
 {
 	char buffer[64];
 	snprintf(buffer, sizeof(buffer), "Target: %.2f C", temp);
-	ESP_LOGI(TAG, "Setting target temp to: %.2f", temp);
+	// ESP_LOGI(TAG, "Setting target temp to: %.2f", temp);
 
 	lvgl_port_lock(0);
 	lv_label_set_text(target_temp_label, buffer);

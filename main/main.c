@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "storage.h"
+#include "web_server.h"
 
 static const char *TAG = "main";
 
@@ -41,8 +42,7 @@ void app_main(void)
     display_init(i2c_bus_handle, default_actual_temp, default_target_temp);
     buttons_init();
     heater_pwm_init();
-
-    PID pid = { .Kp = 2.0f, .Ki = 0.5f, .Kd = 1.0f };
+    wifi_and_web_init();
 
     while (1) {
         float act_temp = get_actual_temp();
@@ -63,9 +63,6 @@ void app_main(void)
             storage_set_target_temp(set_temp);
         }
 
-        int heater_output = (int)pid_update(&pid, set_temp, act_temp);
-        ESP_LOGI(TAG, "HEATER OUTPUT: %d", heater_output);
-        heater_pwm_set(heater_output);
         vTaskDelay(pdMS_TO_TICKS(40));
     }
 }

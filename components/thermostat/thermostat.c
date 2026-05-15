@@ -9,6 +9,7 @@ static const char* TAG = "thermostat";
 
 typedef struct
 {
+	float heater_pwm;
 	float actual_temp;
 	float target_temp;
 	SemaphoreHandle_t mutex;
@@ -62,23 +63,21 @@ void heater_pwm_init(void)
 	ESP_ERROR_CHECK(ledc_channel_config(&channel));
 }
 
-void heater_pwm_set(int duty_percentage)
-{
-	ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty_percentage * 1023 / 100);
-	ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-}
-
-void i2c_bmp280_task(void *params)
+void thermostat_task(void *params)
 {
 	float temp = 0;
+	PID pid = { .Kp = 2.0f, .Ki = 0.5f, .Kd = 1.0f };
+
     while (1) {
         esp_err_t result = bmp280_get_temperature(g_bmp_handle, &temp);
         if (result != ESP_OK) {
             ESP_LOGE(TAG, "bmp280 device read failed (%s)", esp_err_to_name(result));
-        } else {
-			ESP_LOGI(TAG, "sensor value read: %.2f C", temp);
-		}
+        }
+
         set_actual_temp(temp);
+		int heater_output = (int)pid_update(&pid, get_target_temp(), temp);
+		set_heater_pwm(heater_output);
+
 		vTaskDelay(pdMS_TO_TICKS(40));
     }
     bmp280_delete(g_bmp_handle);
@@ -100,7 +99,24 @@ void thermostat_init(
 	g_thermostat.mutex = xSemaphoreCreateMutex();
 	assert(g_thermostat.mutex);
 
-	xTaskCreate(i2c_bmp280_task, "BMP280", 4096, NULL, 1, NULL);
+	xTaskCreate(thermostat_task, "THERMOSTAT", 4096, NULL, 1, NULL);
+}
+
+float get_heater_pwm()
+{
+	xSemaphoreTake(g_thermostat.mutex, portMAX_DELAY);
+	float pwm = g_thermostat.heater_pwm;
+	xSemaphoreGive(g_thermostat.mutex);
+	return pwm;
+}
+
+void set_heater_pwm(float pwm)
+{
+	xSemaphoreTake(g_thermostat.mutex, portMAX_DELAY);
+	g_thermostat.heater_pwm = pwm;
+	xSemaphoreGive(g_thermostat.mutex);
+	ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, pwm * 1023 / 100);
+	ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 }
 
 float get_actual_temp()

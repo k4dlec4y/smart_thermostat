@@ -23,11 +23,10 @@ typedef struct {
     float prev_error;
 } PID;
 
-float pid_update(PID *pid, float set_temp, float act_temp);
-
 void heater_pwm_init(void);
-void heater_pwm_set(int duty_percentage);
 
+float get_heater_pwm();
+void set_heater_pwm(float pwm);
 float get_actual_temp();
 void set_actual_temp(float temp);
 float get_target_temp();
