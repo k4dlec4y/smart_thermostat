@@ -5,98 +5,17 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "thermostat.h"
-#include "esp_sntp.h"
-#include "time.h"
+#include "my_time.h"
+#include "wifi.h"
+
 #include <string.h>
 
 static const char *TAG = "web_server";
 
-static void init_sntp(void)
+void web_init(void)
 {
-    ESP_LOGI(TAG, "Initializing SNTP");
-
-    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    esp_sntp_setservername(0, "pool.ntp.org");
-    esp_sntp_init();
-
-    time_t now = 0;
-    struct tm timeinfo = { 0 };
-
-    int retry = 0;
-    const int retry_count = 10;
-
-    while (timeinfo.tm_year < (2020 - 1900) && ++retry < retry_count) {
-        ESP_LOGI(TAG, "Waiting for system time...");
-        vTaskDelay(pdMS_TO_TICKS(1000));
-
-        time(&now);
-        localtime_r(&now, &timeinfo);
-    }
-
-    ESP_LOGI(TAG, "Time synchronized");
-}
-
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
-                          int32_t event_id, void* event_data)
-{
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        esp_wifi_connect();
-        ESP_LOGI(TAG, "Retrying connection to AP...");
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
-
-        // Start web server here once we have an IP
-        init_sntp();
-        start_webserver();
-    }
-}
-
-void wifi_and_web_init(void)
-{
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(
-		WIFI_EVENT,
-		ESP_EVENT_ANY_ID,
-		&wifi_event_handler,
-		NULL,
-		&instance_any_id
-	));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(
-		IP_EVENT,
-		IP_EVENT_STA_GOT_IP,
-		&wifi_event_handler,
-		NULL,
-		&instance_got_ip
-	));
-
-	wifi_credentials_t creds = storage_get_wifi_credentials();
-	ESP_LOGI(TAG, "wifi ssid: %s", creds.ssid);
-	ESP_LOGI(TAG, "password ssid: %s", creds.password);
-    wifi_config_t wifi_config;
-    memset(&wifi_config, 0, sizeof(wifi_config_t));
-
-    strncpy((char*)wifi_config.sta.ssid, creds.ssid, sizeof(wifi_config.sta.ssid));
-    strncpy((char*)wifi_config.sta.password, creds.password, sizeof(wifi_config.sta.password));
-
-    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK; 
-	
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
-    tzset();
+    // start_webserver() is called inside wifi event handler
+    wifi_init();
 }
 
 static const char* HTML_PAGE =
@@ -174,20 +93,14 @@ static esp_err_t target_down_handler(httpd_req_t *req)
 
 static esp_err_t time_get_handler(httpd_req_t *req)
 {
-    time_t now;
-    time(&now);
-
     struct tm timeinfo;
-    localtime_r(&now, &timeinfo);
-
-    char buf[64];
-    strftime(buf, sizeof(buf),
-             "%Y-%m-%d %H:%M:%S",
-             &timeinfo);
+    char buffer[64];
+    get_time(&timeinfo);
+    time_to_str(&timeinfo, buffer);
 
     char json[128];
     snprintf(json, sizeof(json),
-        "{\"time\":\"%s\"}", buf);
+        "{\"time\":\"%s\"}", buffer);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);

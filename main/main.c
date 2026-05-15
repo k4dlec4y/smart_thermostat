@@ -42,7 +42,7 @@ void app_main(void)
     thermostat_init(i2c_bus_handle, default_actual_temp, default_target_temp);
     display_init(i2c_bus_handle, default_actual_temp, default_target_temp);
     buttons_init();
-    wifi_and_web_init();
+    web_init();
 
     while (1) {
         float act_temp = get_actual_temp();
