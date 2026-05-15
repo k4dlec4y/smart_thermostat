@@ -18,42 +18,33 @@ void web_init(void)
     wifi_init();
 }
 
-static const char* HTML_PAGE =
-"<!doctype html>"
-"<html>"
-"<head>"
-"<title>Thermostat</title>"
-"<script>"
-"async function refresh(){"
-"  const r = await fetch('/api/state');"
-"  const d = await r.json();"
-"  document.getElementById('t').innerText = d.target.toFixed(2);"
-"  document.getElementById('a').innerText = d.actual.toFixed(2);"
-"  document.getElementById('h').innerText = d.heater;"
-"  const rt = await fetch('/api/time');"
-"  const dt = await rt.json();"
-"  document.getElementById('time').innerText = dt.time;"
-"}"
-"async function up(){ await fetch('/api/target/up', {method:'POST'}); refresh(); }"
-"async function down(){ await fetch('/api/target/down', {method:'POST'}); refresh(); }"
-"setInterval(refresh, 1000);"
-"</script>"
-"</head>"
-"<body onload='refresh()'>"
-"<h1>Thermostat</h1>"
-"<p>Time: <span id='time'></span></p>"
-"<p>Target: <span id='t'></span> C</p>"
-"<p>Actual: <span id='a'></span> C</p>"
-"<p>Heater: <span id='h'></span> %</p>"
-"<button onclick='up()'>+</button>"
-"<button onclick='down()'>-</button>"
-"</body>"
-"</html>";
-
 static esp_err_t root_get_handler(httpd_req_t *req)
 {
+    extern const uint8_t index_html_start[] asm("_binary_index_html_start");
+    extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
     httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, HTML_PAGE, HTTPD_RESP_USE_STRLEN);
+    size_t len = index_html_end - index_html_start;
+    httpd_resp_send(req, (const char*)index_html_start, len);
+    return ESP_OK;
+}
+
+static esp_err_t app_get_handler(httpd_req_t *req)
+{
+    extern const uint8_t app_html_start[] asm("_binary_app_js_start");
+    extern const uint8_t app_html_end[]   asm("_binary_app_js_end");
+    httpd_resp_set_type(req, "application/javascript");
+    size_t len = app_html_end - app_html_start;
+    httpd_resp_send(req, (const char*)app_html_start, len);
+    return ESP_OK;
+}
+
+static esp_err_t favicon_get_handler(httpd_req_t *req)
+{
+    extern const uint8_t favicon_html_start[] asm("_binary_favicon_ico_start");
+    extern const uint8_t favicon_html_end[]   asm("_binary_favicon_ico_end");
+    httpd_resp_set_type(req, "image/x-icon");
+    size_t len = favicon_html_end - favicon_html_start;
+    httpd_resp_send(req, (const char*)favicon_html_start, len);
     return ESP_OK;
 }
 
@@ -108,24 +99,32 @@ static esp_err_t time_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static esp_err_t logs_handler(httpd_req_t *req)
+static esp_err_t logs_get_handler(httpd_req_t *req)
 {
-    FILE *f = fopen("/spiffs/log.csv", "r");
-    if (!f) {
-        httpd_resp_send_404(req);
-        return ESP_OK;
+    #define FILES_LEN 2
+    const char *files[FILES_LEN] = {
+        OLD_LOG_FILE,
+        LOG_FILE
+    };
+
+    for (size_t i = 0; i < FILES_LEN; ++i) {
+        FILE *file = fopen(files[i], "r");
+        if (!file) {
+            httpd_resp_send_404(req);
+            return ESP_OK;
+        }
+        httpd_resp_set_type(req, "text/csv");
+
+        char buf[256];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof(buf), file)) > 0) {
+            httpd_resp_send_chunk(req, buf, n);
+        }
+
+        fclose(file);
     }
 
-    httpd_resp_set_type(req, "text/csv");
-
-    char line[128];
-    while (fgets(line, sizeof(line), f)) {
-        httpd_resp_sendstr_chunk(req, line);
-    }
-
-    httpd_resp_sendstr_chunk(req, NULL);
-    fclose(f);
-
+    httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
 
@@ -148,6 +147,22 @@ httpd_handle_t start_webserver(void)
         .user_ctx  = NULL
     };
     httpd_register_uri_handler(server, &root_uri);
+
+    const httpd_uri_t app_uri = {
+        .uri       = "/app.js",
+        .method    = HTTP_GET,
+        .handler   = app_get_handler,
+        .user_ctx  = NULL
+    };
+    httpd_register_uri_handler(server, &app_uri);
+
+    const httpd_uri_t favicon_uri = {
+        .uri       = "/favicon.ico",
+        .method    = HTTP_GET,
+        .handler   = favicon_get_handler,
+        .user_ctx  = NULL
+    };
+    httpd_register_uri_handler(server, &favicon_uri);
 
     const httpd_uri_t state_uri = {
         .uri = "/api/state",
@@ -176,6 +191,13 @@ httpd_handle_t start_webserver(void)
         .handler = time_get_handler,
     };
     httpd_register_uri_handler(server, &time_uri);
+
+    static const httpd_uri_t logs_uri = {
+        .uri = "/logs.csv",
+        .method = HTTP_GET,
+        .handler = logs_get_handler,
+    };
+    httpd_register_uri_handler(server, &logs_uri);
 
     return server;
 }

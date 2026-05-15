@@ -8,8 +8,6 @@
 #include "storage.h"
 #include "web_server.h"
 
-static const char *TAG = "main";
-
 #define I2C_SDA 17
 #define I2C_SCL 18
 
@@ -43,6 +41,7 @@ void app_main(void)
     display_init(i2c_bus_handle, default_actual_temp, default_target_temp);
     buttons_init();
     web_init();
+    start_logger_task();
 
     while (1) {
         float act_temp = get_actual_temp();

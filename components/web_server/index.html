@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head>
+    <title>Thermostat</title>
+</head>
+<body>
+    <h1>Thermostat</h1>
+
+    <div>
+        <p>Time: <span id="time">...</span></p>
+        <p>Target: <span id="t">0.00</span> C</p>
+        <p>Actual: <span id="a">0.00</span> C</p>
+        <p>Heater: <span id="h">0</span> %</p>
+
+        <button onclick="up()">+</button>
+        <button onclick="down()">-</button>
+    </div>
+
+    <h2>Logs</h2>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Actual</th>
+                <th>Target</th>
+                <th>PWM</th>
+            </tr>
+        </thead>
+        <tbody id="logs"></tbody>
+    </table>
+
+    <script src="app.js"></script>
+</body>
+</html>

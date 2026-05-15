@@ -3,6 +3,12 @@
 
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "esp_vfs_fat.h"
+#include "wear_levelling.h"
+#include "unistd.h"
+#include "sys/stat.h"
+#include "my_time.h"
+#include "thermostat.h"
 
 #include "esp_log.h"
 #include "esp_err.h"
@@ -11,14 +17,29 @@
 
 static const char *TAG = "storage";
 
+/* NVS */
 #define NAMESPACE "config"
-
 #define KEY_TARGET_TEMP "target_temp"
-
 #define KEY_WIFI_SSID "wifi_ssid"
 #define KEY_WIFI_PASS "wifi_pass"
 
+const char *LOG_FILE = "/fatfs/log.csv";
+const char *OLD_LOG_FILE = "/fatfs/log_old.csv";
+
+#define FILE_MAX_SIZE 256 * 1024
+
 static nvs_handle_t g_nvs_handle;
+static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
+
+static void ensure_log_file_exists(const char *path)
+{
+    if (access(path, F_OK) == 0) {
+        return;
+    }
+    ESP_LOGI(TAG, "Creating %s", path);
+    FILE *file = fopen(path, "w");
+    fclose(file);
+}
 
 void storage_init(void)
 {
@@ -33,12 +54,101 @@ void storage_init(void)
     ESP_ERROR_CHECK(nvs_open(NAMESPACE, NVS_READWRITE, &g_nvs_handle));
 
     ESP_LOGI(TAG, "NVS initialized");
-    if (FORCE_NEW_WIFI || !storage_has_wifi_credentials()) {
+    if (!storage_has_wifi_credentials() || FORCE_NEW_WIFI) {
         ESP_LOGW(TAG, "Forcing new WiFi credentials");
         ESP_ERROR_CHECK(nvs_set_str(g_nvs_handle, KEY_WIFI_SSID, WIFI_SSID));
         ESP_ERROR_CHECK(nvs_set_str(g_nvs_handle, KEY_WIFI_PASS, WIFI_PASSWORD));
         ESP_ERROR_CHECK(nvs_commit(g_nvs_handle));
     }
+
+    const esp_vfs_fat_mount_config_t mount_config = {
+        .format_if_mount_failed = true,
+        .max_files = 4,
+        .allocation_unit_size = CONFIG_WL_SECTOR_SIZE,
+    };
+
+    esp_err_t err = esp_vfs_fat_spiflash_mount_rw_wl(
+        "/fatfs",
+        "storage",
+        &mount_config,
+        &s_wl_handle
+    );
+
+    ESP_ERROR_CHECK(err);
+
+    ESP_LOGI(TAG, "FATFS mounted");
+    ensure_log_file_exists(LOG_FILE);
+    ensure_log_file_exists(OLD_LOG_FILE);
+}
+
+static void log_rotate()
+{
+    struct stat st;
+    if (stat(LOG_FILE, &st) != 0) {
+        ESP_LOGE(TAG, "could not get %s file's size using stat()", LOG_FILE);
+        return;
+    }
+
+    if (st.st_size < FILE_MAX_SIZE)
+        return;
+
+    if (remove(OLD_LOG_FILE) != 0) {
+        ESP_LOGE(TAG, "could not remove %s", OLD_LOG_FILE);
+        return; 
+    }
+    if (rename(LOG_FILE, OLD_LOG_FILE) != 0) {
+        ESP_LOGE(TAG, "could not move %s to %s", LOG_FILE, OLD_LOG_FILE);
+        return;
+    }
+    if (truncate(LOG_FILE, 0) != 0)
+        ESP_LOGE(TAG, "could not truncate %s", LOG_FILE);
+    return;
+}
+
+static void logger_task(void *arg)
+{
+    // due to sntp
+    vTaskDelay(pdMS_TO_TICKS(15000));
+    while (1) {
+
+        time_t now;
+        time(&now);
+
+        struct tm tm_info;
+        localtime_r(&now, &tm_info);
+
+        int wait_sec = (15 - (tm_info.tm_min % 15)) * 60 - tm_info.tm_sec;
+        if (wait_sec <= 0)
+            wait_sec += 15 * 60;
+
+        vTaskDelay(pdMS_TO_TICKS(wait_sec * 1000));
+
+        get_time(&tm_info);
+        char timestamp[64];
+        time_to_str(&tm_info, timestamp);
+
+        FILE *file = fopen(LOG_FILE, "a");
+        if (!file)
+            continue;
+
+        fprintf(file, "%s,%.2f,%.2f,%d\n",
+            timestamp,
+            get_actual_temp(),
+            get_target_temp(),
+            (int)get_heater_pwm()
+        );
+        fclose(file);
+
+        ESP_LOGI(TAG, "Log written");
+        log_rotate();
+    }
+
+    vTaskDelete(NULL);
+}
+
+void start_logger_task(void)
+{
+    xTaskCreate(logger_task, "logger", 4096, NULL, 1, NULL);
 }
 
 bool storage_has_wifi_credentials(void)

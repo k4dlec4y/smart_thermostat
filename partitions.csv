@@ -5,4 +5,4 @@ phy_init, data, phy, 0xf000, 0x1000
 factory, app, factory, 0x10000, 2M
 # ota_0, app, ota_0, , 1M
 # ota_1, app, ota_1, , 1M
-# storage, data, fat, , 10M, readonly
+storage, data, fat, , 2M,
