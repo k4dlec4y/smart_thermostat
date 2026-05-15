@@ -5,6 +5,7 @@
 #include "buttons.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "storage.h"
 
 static const char *TAG = "main";
 
@@ -31,8 +32,9 @@ void i2c_init(void)
 
 void app_main(void)
 {
+    storage_init();
     float default_actual_temp = 15;
-    float default_target_temp = 25;
+    float default_target_temp = storage_get_target_temp();
 
 	i2c_init();
     thermostat_init(i2c_bus_handle, default_actual_temp, default_target_temp);
@@ -55,6 +57,10 @@ void app_main(void)
         if (atomic_load(&button_up_pressed)) {
             atomic_store(&button_up_pressed, false);
             increase_target_temp();
+        }
+        if (atomic_load(&update_target_temp_to_storage)) {
+            atomic_store(&update_target_temp_to_storage, false);
+            storage_set_target_temp(set_temp);
         }
 
         int heater_output = (int)pid_update(&pid, set_temp, act_temp);
