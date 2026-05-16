@@ -6,8 +6,11 @@
 #include "esp_err.h"
 #include "driver/ledc.h"
 #include "driver/gpio.h"
+#include "esp_timer.h"
 
 static const char* TAG = "THERMOSTAT";
+
+atomic_bool g_save_target_temp = false;
 
 #define MIN_TARGET_TEMP 0
 #define MAX_TARGET_TEMP 40
@@ -17,6 +20,8 @@ static const char* TAG = "THERMOSTAT";
 #define BMP280_ADDRESS 0x76
 
 #define HEATER_PWM_PIN GPIO_NUM_5
+
+#define TARGET_TEMP_SAVE_DELAY_SEC 5 * 1000000
 
 typedef struct {
 	float heater_pwm;
@@ -36,6 +41,7 @@ typedef struct {
 
 static thermostat_t g_thermostat;
 static bmp280_handle_t g_bmp_handle;
+static esp_timer_handle_t g_save_target_temp_timer;
 
 static float pid_update(PID *pid, float set_temp, float act_temp);
 
@@ -55,6 +61,11 @@ static void thermostat_task(void *params)
     }
     bmp280_delete(g_bmp_handle);
     vTaskDelete(NULL);
+}
+
+void IRAM_ATTR save_target_temp_handler(void* data)
+{
+	atomic_store(&g_save_target_temp, true);
 }
 
 void thermostat_init(
@@ -91,6 +102,17 @@ void thermostat_init(
 		.hpoint = 0
 	};
 	ESP_ERROR_CHECK(ledc_channel_config(&channel));
+
+	esp_timer_create_args_t timer_args = {
+		.callback = save_target_temp_handler,
+		.arg = NULL,
+		.dispatch_method = ESP_TIMER_TASK,
+		.skip_unhandled_events = true,
+	};
+	ESP_ERROR_CHECK(esp_timer_create(
+		&timer_args,
+		&g_save_target_temp_timer
+	));
 
 	xTaskCreate(thermostat_task, "Thermostat", 4096, NULL, 1, NULL);
 }
@@ -145,6 +167,12 @@ void set_target_temp(float temp)
 	xSemaphoreGive(g_thermostat.mutex);
 }
 
+static void start_target_temp_save_timer()
+{
+	esp_timer_stop(g_save_target_temp_timer);
+	esp_timer_start_once(g_save_target_temp_timer, TARGET_TEMP_SAVE_DELAY_SEC);
+}
+
 bool increase_target_temp()
 {
 	bool rv = true;
@@ -156,6 +184,7 @@ bool increase_target_temp()
 		g_thermostat.target_temp = temp;
 	}
 	xSemaphoreGive(g_thermostat.mutex);
+	start_target_temp_save_timer();
 	return rv;
 }
 
@@ -170,6 +199,7 @@ bool decrease_target_temp()
 		g_thermostat.target_temp = temp;
 	}
 	xSemaphoreGive(g_thermostat.mutex);
+	start_target_temp_save_timer();
 	return rv;
 }
 

@@ -2,6 +2,9 @@
 #define THERMOSTAT_H
 
 #include "driver/i2c_master.h"
+#include "stdatomic.h"
+
+extern atomic_bool g_save_target_temp;
 
 /**
  * Initialize BMP280 sensor and PWM output

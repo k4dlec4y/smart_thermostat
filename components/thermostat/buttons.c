@@ -11,7 +11,6 @@ gpio_num_t BUTTON_UP_PIN = GPIO_NUM_3;
 
 atomic_bool button_down_pressed = false;
 atomic_bool button_up_pressed = false;
-atomic_bool update_target_temp_to_storage = false;
 
 static esp_timer_handle_t button_down_debounce_timer;
 static esp_timer_handle_t button_up_debounce_timer;
@@ -43,7 +42,6 @@ void IRAM_ATTR button_debounce_handler(void* data)
 		}
 	} else {
 		gpio_intr_enable(pin);
-		atomic_store(&update_target_temp_to_storage, true);
 	}
 }
 

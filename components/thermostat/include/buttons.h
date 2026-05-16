@@ -6,7 +6,6 @@
 
 extern atomic_bool button_down_pressed;
 extern atomic_bool button_up_pressed;
-extern atomic_bool update_target_temp_to_storage;
 
 void buttons_init(void);
 

@@ -72,7 +72,6 @@ static esp_err_t state_get_handler(httpd_req_t *req)
 static esp_err_t target_up_handler(httpd_req_t *req)
 {
     increase_target_temp();
-    storage_set_target_temp(get_target_temp());
 
     httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
@@ -81,7 +80,6 @@ static esp_err_t target_up_handler(httpd_req_t *req)
 static esp_err_t target_down_handler(httpd_req_t *req)
 {
     decrease_target_temp();
-    storage_set_target_temp(get_target_temp());
 
     httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;

@@ -110,7 +110,7 @@ static void logger_task(void *arg)
 {
     while (atomic_load(&is_time_set_up))
     {}
-
+    ESP_LOGI(TAG, "Logger task start");
     while (1) {
 
         time_t now;

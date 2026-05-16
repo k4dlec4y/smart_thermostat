@@ -56,8 +56,8 @@ void app_main(void)
             atomic_store(&button_up_pressed, false);
             increase_target_temp();
         }
-        if (atomic_load(&update_target_temp_to_storage)) {
-            atomic_store(&update_target_temp_to_storage, false);
+        if (atomic_load(&g_save_target_temp)) {
+            atomic_store(&g_save_target_temp, false);
             storage_set_target_temp(set_temp);
         }
 
