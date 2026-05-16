@@ -6,8 +6,12 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "my_time.h"
+#include "stdio.h"
 
 static const char *TAG = "WIFI";
+
+atomic_bool ip_changed = false;
+char ip_address[64] = { 0 };
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                           int32_t event_id, void* event_data)
@@ -16,10 +20,14 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         esp_wifi_connect();
+        snprintf(ip_address, sizeof(ip_address), "undefined");
+        atomic_store(&ip_changed, true);
         ESP_LOGI(TAG, "Retrying connection to AP...");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+        snprintf(ip_address, sizeof(ip_address), IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "Got IP: %s", ip_address);
+        atomic_store(&ip_changed, true);
 
         // Start web server here once we have an IP
         init_sntp();

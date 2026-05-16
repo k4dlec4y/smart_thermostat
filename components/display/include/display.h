@@ -13,4 +13,6 @@ void display_set_actual_temp(float temp);
 
 void display_set_target_temp(float temp);
 
+void display_set_ip_address(char *ip_address);
+
 #endif // DISPLAY_H

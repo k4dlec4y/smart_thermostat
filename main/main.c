@@ -7,6 +7,7 @@
 #include "freertos/task.h"
 #include "storage.h"
 #include "web_server.h"
+#include "wifi.h"
 
 #define I2C_SDA 17
 #define I2C_SCL 18
@@ -55,6 +56,10 @@ void app_main(void)
         if (atomic_load(&button_up_pressed)) {
             atomic_store(&button_up_pressed, false);
             increase_target_temp();
+        }
+        if (atomic_load(&ip_changed)) {
+            atomic_store(&ip_changed, false);
+            display_set_ip_address(ip_address);
         }
         if (atomic_load(&g_save_target_temp)) {
             atomic_store(&g_save_target_temp, false);

@@ -25,6 +25,7 @@ static lv_display_t *display;
 
 lv_obj_t *actual_temp_label = NULL;
 lv_obj_t *target_temp_label = NULL;
+lv_obj_t *ip_address_label = NULL;
 
 static void create_ui(void)
 {
@@ -45,16 +46,23 @@ static void create_ui(void)
 	lv_obj_t *top = lv_obj_create(root);
 	lv_obj_remove_style_all(top);
 	lv_obj_set_width(top, LV_PCT(100));
-	lv_obj_set_height(top, LV_PCT(50));
+	lv_obj_set_height(top, LV_PCT(33));
 	actual_temp_label = lv_label_create(top);
 	lv_obj_center(actual_temp_label);
+
+	lv_obj_t *middle = lv_obj_create(root);
+	lv_obj_remove_style_all(middle);
+	lv_obj_set_width(middle, LV_PCT(100));
+	lv_obj_set_height(middle, LV_PCT(33));
+	target_temp_label = lv_label_create(middle);
+	lv_obj_center(target_temp_label);
 
 	lv_obj_t *bottom = lv_obj_create(root);
 	lv_obj_remove_style_all(bottom);
 	lv_obj_set_width(bottom, LV_PCT(100));
-	lv_obj_set_height(bottom, LV_PCT(50));
-	target_temp_label = lv_label_create(bottom);
-	lv_obj_center(target_temp_label);
+	lv_obj_set_height(bottom, LV_PCT(34));
+	ip_address_label = lv_label_create(bottom);
+	lv_obj_center(ip_address_label);
 
 	lvgl_port_unlock();
 }
@@ -134,6 +142,7 @@ void display_init(
 	create_ui();
 	display_set_actual_temp(actual_temp);
 	display_set_target_temp(target_temp);
+	display_set_ip_address("undefined");
 }
 
 void display_set_actual_temp(float temp)
@@ -153,5 +162,15 @@ void display_set_target_temp(float temp)
 
 	lvgl_port_lock(0);
 	lv_label_set_text(target_temp_label, buffer);
+	lvgl_port_unlock();
+}
+
+void display_set_ip_address(char *ip_address)
+{
+	char buffer[64];
+	snprintf(buffer, sizeof(buffer), "IP %s", ip_address);
+
+	lvgl_port_lock(0);
+	lv_label_set_text(ip_address_label, buffer);
 	lvgl_port_unlock();
 }
