@@ -15,13 +15,13 @@
 
 #include <string.h>
 
-static const char *TAG = "storage";
+static const char *TAG = "STORAGE";
 
 /* NVS */
-#define NAMESPACE "config"
-#define KEY_TARGET_TEMP "target_temp"
-#define KEY_WIFI_SSID "wifi_ssid"
-#define KEY_WIFI_PASS "wifi_pass"
+static const char *NAMESPACE = "config";
+static const char *KEY_TARGET_TEMP = "target_temp";
+static const char *KEY_WIFI_SSID = "wifi_ssid";
+static const char *KEY_WIFI_PASS = "wifi_pass";
 
 const char *LOG_FILE = "/fatfs/log.csv";
 const char *OLD_LOG_FILE = "/fatfs/log_old.csv";
@@ -33,9 +33,9 @@ static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
 
 static void ensure_log_file_exists(const char *path)
 {
-    if (access(path, F_OK) == 0) {
+    if (access(path, F_OK) == 0)
         return;
-    }
+
     ESP_LOGI(TAG, "Creating %s", path);
     FILE *file = fopen(path, "w");
     fclose(file);
@@ -45,7 +45,8 @@ void storage_init(void)
 {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-        ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ret == ESP_ERR_NVS_NEW_VERSION_FOUND
+    ) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
@@ -76,7 +77,7 @@ void storage_init(void)
 
     ESP_ERROR_CHECK(err);
 
-    ESP_LOGI(TAG, "FATFS mounted");
+    ESP_LOGI(TAG, "FatFs mounted");
     ensure_log_file_exists(LOG_FILE);
     ensure_log_file_exists(OLD_LOG_FILE);
 }
@@ -85,7 +86,7 @@ static void log_rotate()
 {
     struct stat st;
     if (stat(LOG_FILE, &st) != 0) {
-        ESP_LOGE(TAG, "could not get %s file's size using stat()", LOG_FILE);
+        ESP_LOGE(TAG, "Could not get %s file's size using stat()", LOG_FILE);
         return;
     }
 
@@ -93,15 +94,15 @@ static void log_rotate()
         return;
 
     if (remove(OLD_LOG_FILE) != 0) {
-        ESP_LOGE(TAG, "could not remove %s", OLD_LOG_FILE);
+        ESP_LOGE(TAG, "Could not remove %s", OLD_LOG_FILE);
         return; 
     }
     if (rename(LOG_FILE, OLD_LOG_FILE) != 0) {
-        ESP_LOGE(TAG, "could not move %s to %s", LOG_FILE, OLD_LOG_FILE);
+        ESP_LOGE(TAG, "Could not move %s to %s", LOG_FILE, OLD_LOG_FILE);
         return;
     }
     if (truncate(LOG_FILE, 0) != 0)
-        ESP_LOGE(TAG, "could not truncate %s", LOG_FILE);
+        ESP_LOGE(TAG, "Could not truncate %s", LOG_FILE);
     return;
 }
 
@@ -148,7 +149,7 @@ static void logger_task(void *arg)
 
 void start_logger_task(void)
 {
-    xTaskCreate(logger_task, "logger", 4096, NULL, 1, NULL);
+    xTaskCreate(logger_task, "Logger", 4096, NULL, 1, NULL);
 }
 
 bool storage_has_wifi_credentials(void)
@@ -195,5 +196,5 @@ void storage_set_target_temp(float temp)
 	);
     ESP_ERROR_CHECK(nvs_commit(g_nvs_handle));
 
-    ESP_LOGI(TAG, "Saved target temp: %.2f", temp);
+    ESP_LOGI(TAG, "Target temp has been saved: %.2f", temp);
 }
