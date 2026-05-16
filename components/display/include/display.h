@@ -1,10 +1,7 @@
-#include "esp_lcd_panel_io.h"
-#include "esp_lcd_panel_vendor.h"
-#include "esp_lcd_panel_ops.h"
-#include "esp_lcd_panel_ssd1306.h"
+#ifndef DISPLAY_H
+#define DISPLAY_H
 
-#include "lvgl.h"
-#include "esp_lvgl_port.h"
+#include "driver/i2c_master.h"
 
 void display_init(
 	i2c_master_bus_handle_t bus_handle,
@@ -15,3 +12,5 @@ void display_init(
 void display_set_actual_temp(float temp);
 
 void display_set_target_temp(float temp);
+
+#endif // DISPLAY_H
