@@ -36,7 +36,6 @@ void app_main(void)
     float default_target_temp = storage_get_target_temp();
 
 	i2c_init();
-    heater_pwm_init();
     thermostat_init(i2c_bus_handle, default_actual_temp, default_target_temp);
     display_init(i2c_bus_handle, default_actual_temp, default_target_temp);
     buttons_init();
