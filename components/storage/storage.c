@@ -28,6 +28,8 @@ const char *OLD_LOG_FILE = "/fatfs/log_old.csv";
 
 #define FILE_MAX_SIZE 256 * 1024
 
+#define LOG_PERIOD_MIN 5
+
 static nvs_handle_t g_nvs_handle;
 static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
 
@@ -108,7 +110,7 @@ static void log_rotate()
 
 static void logger_task(void *arg)
 {
-    while (atomic_load(&is_time_set_up))
+    while (!atomic_load(&is_time_set_up))
     {}
     ESP_LOGI(TAG, "Logger task start");
     while (1) {
@@ -119,10 +121,10 @@ static void logger_task(void *arg)
         struct tm tm_info;
         localtime_r(&now, &tm_info);
 
-        int wait_sec = (15 - (tm_info.tm_min % 15)) * 60 - tm_info.tm_sec;
+        int wait_sec = (LOG_PERIOD_MIN - (tm_info.tm_min % LOG_PERIOD_MIN)) * 60 - tm_info.tm_sec;
         if (wait_sec <= 0)
-            wait_sec += 15 * 60;
-
+            wait_sec += LOG_PERIOD_MIN * 60;
+        ESP_LOGI(TAG, "Logger waiting to write new log: %dm, %ds", wait_sec / 60, wait_sec % 60);
         vTaskDelay(pdMS_TO_TICKS(wait_sec * 1000));
 
         get_time(&tm_info);
@@ -130,8 +132,10 @@ static void logger_task(void *arg)
         time_to_str(&tm_info, timestamp);
 
         FILE *file = fopen(LOG_FILE, "a");
-        if (!file)
+        if (!file) {
+            ESP_LOGW(TAG, "Could not open the log file to save the log");
             continue;
+        }
 
         fprintf(file, "%s,%.2f,%.2f,%d\n",
             timestamp,
