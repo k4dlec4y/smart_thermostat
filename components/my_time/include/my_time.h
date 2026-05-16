@@ -3,6 +3,9 @@
 
 #include "esp_sntp.h"
 #include "time.h"
+#include "stdatomic.h"
+
+extern atomic_bool is_time_set_up;
 
 void init_sntp(void);
 

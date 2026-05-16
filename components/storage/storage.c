@@ -108,8 +108,9 @@ static void log_rotate()
 
 static void logger_task(void *arg)
 {
-    // due to sntp
-    vTaskDelay(pdMS_TO_TICKS(15000));
+    while (atomic_load(&is_time_set_up))
+    {}
+
     while (1) {
 
         time_t now;

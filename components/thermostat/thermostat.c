@@ -45,7 +45,7 @@ static void thermostat_task(void *params)
 	PID pid = { .Kp = 2.0f, .Ki = 0.5f, .Kd = 1.0f };
 
     while (1) {
-        ESP_ERROR_CHECK(bmp280_get_temperature(g_bmp_handle, &temp));
+        bmp280_get_temperature(g_bmp_handle, &temp);
 
         set_actual_temp(temp);
 		int heater_output = (int)pid_update(&pid, get_target_temp(), temp);

@@ -1,13 +1,17 @@
 #include "my_time.h"
 #include "esp_log.h"
 
-static const char *TAG = "my_time";
+static const char *TAG = "MY_TIME";
+
+static const char* TIMEZONE_STR = "CET-1CEST,M3.5.0/2,M10.5.0/3"; 
+
+atomic_bool is_time_set_up = false;
 
 void init_sntp(void)
 {
     ESP_LOGI(TAG, "Initializing SNTP");
 
-	setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
+	setenv("TZ", TIMEZONE_STR, 1);
     tzset();
 
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
@@ -18,7 +22,7 @@ void init_sntp(void)
     struct tm timeinfo = { 0 };
 
     int retry = 0;
-    const int retry_count = 10;
+    const int retry_count = 15;
 
     while (timeinfo.tm_year < (2020 - 1900) && ++retry < retry_count) {
         ESP_LOGI(TAG, "Waiting for system time...");
@@ -28,6 +32,7 @@ void init_sntp(void)
         localtime_r(&now, &timeinfo);
     }
 
+    atomic_store(&is_time_set_up, true);
     ESP_LOGI(TAG, "Time synchronized");
 }
 
