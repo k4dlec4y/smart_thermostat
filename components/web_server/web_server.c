@@ -10,7 +10,7 @@
 
 #include <string.h>
 
-static const char *TAG = "web_server";
+static const char *TAG = "WEB_SERVER";
 
 void web_init(void)
 {
@@ -50,10 +50,15 @@ static esp_err_t favicon_get_handler(httpd_req_t *req)
 
 static esp_err_t state_get_handler(httpd_req_t *req)
 {
-    char json[128];
+    struct tm timeinfo;
+    char buffer[64];
+    get_time(&timeinfo);
+    time_to_str(&timeinfo, buffer);
 
+    char json[256];
     snprintf(json, sizeof(json),
-        "{\"target\":%.2f,\"actual\":%.2f,\"heater\":%d}",
+        "{\"time\":\"%s\",\"target\":%.2f,\"actual\":%.2f,\"heater\":%d}",
+        buffer,
         get_target_temp(),
         get_actual_temp(),
         (int)get_heater_pwm());
@@ -79,23 +84,6 @@ static esp_err_t target_down_handler(httpd_req_t *req)
     storage_set_target_temp(get_target_temp());
 
     httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
-    return ESP_OK;
-}
-
-static esp_err_t time_get_handler(httpd_req_t *req)
-{
-    struct tm timeinfo;
-    char buffer[64];
-    get_time(&timeinfo);
-    time_to_str(&timeinfo, buffer);
-
-    char json[128];
-    snprintf(json, sizeof(json),
-        "{\"time\":\"%s\"}", buffer);
-
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);
-
     return ESP_OK;
 }
 
@@ -184,13 +172,6 @@ httpd_handle_t start_webserver(void)
         .handler = target_down_handler,
     };
     httpd_register_uri_handler(server, &down_uri);
-
-    static const httpd_uri_t time_uri = {
-        .uri = "/api/time",
-        .method = HTTP_GET,
-        .handler = time_get_handler,
-    };
-    httpd_register_uri_handler(server, &time_uri);
 
     static const httpd_uri_t logs_uri = {
         .uri = "/logs.csv",

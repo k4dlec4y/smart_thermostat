@@ -7,7 +7,7 @@
 #include "esp_netif.h"
 #include "my_time.h"
 
-static const char *TAG = "wifi";
+static const char *TAG = "WIFI";
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                           int32_t event_id, void* event_data)
@@ -59,8 +59,16 @@ void wifi_init(void)
     wifi_config_t wifi_config;
     memset(&wifi_config, 0, sizeof(wifi_config_t));
 
-    strncpy((char*)wifi_config.sta.ssid, creds.ssid, sizeof(wifi_config.sta.ssid));
-    strncpy((char*)wifi_config.sta.password, creds.password, sizeof(wifi_config.sta.password));
+    strncpy(
+        (char*)wifi_config.sta.ssid,
+        creds.ssid,
+        sizeof(wifi_config.sta.ssid)
+    );
+    strncpy(
+        (char*)wifi_config.sta.password,
+        creds.password,
+        sizeof(wifi_config.sta.password)
+    );
 
     wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK; 
 	

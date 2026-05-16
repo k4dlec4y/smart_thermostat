@@ -3,14 +3,11 @@ async function refresh() {
         const res = await fetch('/api/state');
         const data = await res.json();
 
+        document.getElementById('time').innerText = data.time;
         document.getElementById('t').innerText = data.target.toFixed(2);
         document.getElementById('a').innerText = data.actual.toFixed(2);
         document.getElementById('h').innerText = data.heater;
 
-        const rt = await fetch('/api/time');
-        const dt = await rt.json();
-
-        document.getElementById('time').innerText = dt.time;
     } catch (e) {
         console.error(e);
     }
